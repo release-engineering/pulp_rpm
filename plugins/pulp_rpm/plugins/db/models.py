@@ -188,12 +188,19 @@ class RPM(VersionedPackage):
         unit_key = self.unit_key
         return os.path.join(
             unit_key['name'], unit_key['version'], unit_key['release'],
-            unit_key['arch'], unit_key['checksum'], self.metadata['filename']
+            self.signature, unit_key['arch'], unit_key['checksum'],
+            self.metadata['filename']
         )
 
     @property
     def download_path(self):
         return self.metadata['relativepath']
+
+    @property
+    def signature(self):
+        if self.metadata.get("signature"):
+            return self.metadata.get("signature").lower()
+        return 'none'
 
 
 class SRPM(RPM):

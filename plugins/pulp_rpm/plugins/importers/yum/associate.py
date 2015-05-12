@@ -4,12 +4,14 @@ import os
 import shutil
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp.server.managers import factory as manager_factory
 
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import depsolve
 from pulp_rpm.plugins.importers.yum import existing
 
+class VerifySigException(Exception):pass
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,6 +40,12 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         # this might use a lot of RAM since RPMs tend to have lots of metadata
         # TODO: so we should probably do something about that
         units = import_conduit.get_source_units()
+
+    if not config.get("allow_unsigned", False):
+        try:
+            _verify_signature(dest_repo, units)
+        except VerifySigException as e:
+            raise AssociateException("Associating Units exception while verifing signature.\n%s" % e)
 
     # get config items that we care about
     recursive = config.get(constants.CONFIG_RECURSIVE)
@@ -358,3 +366,54 @@ def _safe_copy_unit_without_file(unit):
         if key.startswith('_'):
             del new_unit.metadata[key]
     return new_unit
+
+
+def _verify_signature(repo, units):
+    """
+    Make sure that all the units have the valid signature, otherwise
+    block this assciation.
+
+    :param repo:    dest repo
+    :tyep  repo:    pulp.plugins.model.Repository
+    :param units:           iterable of Unit objects to copy
+    :type  units:           iterable
+    """
+
+    repo_importer_manager = manager_factory.repo_importer_manager()
+    repo_importer = repo_importer_manager.get_importer(repo.id)
+    config = repo_importer.get("config", {}) or {}
+    allowed_keys = config.get('allowed_keys', None)
+
+    # the rules is:
+    # repo without allowed_keys: allow all RPMs
+    # repo with allowed_keys:    only allow RPMs with signatures from
+    #                            that key list
+    if not allowed_keys:
+        return
+
+    for unit in units:
+        if unit.type_id in (models.RPM.TYPE, models.SRPM.TYPE):
+            signature = unit.metadata.get("signature", None)
+            if not signature:
+                _LOGGER.error("No signature metadata found for Package: %s" % unit.metadata['filename'])
+                raise VerifySigException(
+                    "No signature metadata found for Package: %s" % unit.metadata['filename']
+                )
+            if signature in ('', 'none'):
+                _LOGGER.exception("Invalid Package(%s) without signature." % unit.metadata['filename'])
+                raise VerifySigException(
+                    "No signature found for Package: %s" % unit.metadata['filename']
+                )
+            else:
+                verified = False
+                for key in allowed_keys:
+                    if key.lower() == signature.lower():
+                        verified = True
+                        break
+                if not verified:
+                    _LOGGER.exception("Invalid signature: %s" % signature)
+                    raise VerifySigException(
+                        "Invalid signature(%s) found for Package: %s. Allowed Signatures %s" % (signature,
+                                                                                                unit.metadata['filename'],
+                                                                                                allowed_keys)
+                    )

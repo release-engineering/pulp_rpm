@@ -413,6 +413,8 @@ def _generate_rpm_data(type_id, rpm_filename, user_metadata=None):
     # rpm_parse.get_package_xml(..)
     file_stat = os.stat(rpm_filename)
     metadata['time'] = file_stat[stat.ST_MTIME]
+    metadata['signature_details'] = headers.sprintf("%|DSAHEADER?{%{DSAHEADER:pgpsig}}:{%|RSAHEADER?{%{RSAHEADER:pgpsig}}:{%|SIGGPG?{%{SIGGPG:pgpsig}}:{%|SIGPGP?{%{SIGPGP:pgpsig}}:{none}|}|}|}|")
+    metadata['signature'] = metadata['signature_details'].split()[-1][-8:].lower()
 
     return unit_key, metadata
 
