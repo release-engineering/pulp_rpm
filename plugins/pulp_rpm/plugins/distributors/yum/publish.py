@@ -242,8 +242,9 @@ class Publisher(BaseYumRepoPublisher):
         date_filter = None
 
         insert_step = None
-        if last_published and \
-                ((last_deleted and last_published > last_deleted) or not last_deleted):
+         if last_published and \
+                ((last_deleted and last_published > last_deleted) or not last_deleted)\
+                and not config.get("skip_fast_forward", False):
             # Add the step to copy the current published directory into place
             working_dir = repo.working_dir
             specific_master = None
