@@ -245,7 +245,7 @@ class Publisher(BaseYumRepoPublisher):
         if last_published and \
                 ((last_deleted and last_published > last_deleted) or not last_deleted):
             # Add the step to copy the current published directory into place
-            working_dir = repo.working_dir
+            working_dir = os.path.join(repo.working_dir, repo_relative_path)
             specific_master = None
 
             if config.get(constants.PUBLISH_HTTPS_KEYWORD):
