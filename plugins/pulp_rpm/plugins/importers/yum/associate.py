@@ -4,6 +4,7 @@ import os
 import shutil
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp.server.managers import factory as manager_factory
 
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.db import models
@@ -12,6 +13,9 @@ from pulp_rpm.plugins.importers.yum import existing
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class PackageDuplicateError(Exception):pass
 
 
 def associate(source_repo, dest_repo, import_conduit, config, units=None):
@@ -38,6 +42,9 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         # this might use a lot of RAM since RPMs tend to have lots of metadata
         # TODO: so we should probably do something about that
         units = import_conduit.get_source_units()
+
+    # check for duplicates
+    _check_for_duplicates(dest_repo, units)
 
     # get config items that we care about
     recursive = config.get(constants.CONFIG_RECURSIVE)
@@ -358,3 +365,70 @@ def _safe_copy_unit_without_file(unit):
         if key.startswith('_'):
             del new_unit.metadata[key]
     return new_unit
+
+
+def _check_for_duplicates(repo, units):
+    """
+    Make sure any of units doens't already exists in repository with different
+    checksum. Otherwise block this assciation.
+
+    :param repo:    dest repo
+    :tyep  repo:    pulp.plugins.model.Repository
+    :param units:           iterable of Unit objects to copy
+    :type  units:           iterable
+    """
+
+
+    # build search criteria
+    or_criteria = []
+    fname_keys = set(models.RPM.UNIT_KEY_NAMES) - set(["checksum",
+                                                       "checksumtype",
+                                                       "epoch"])
+    PAD = [("checksum", None), ("checksumtype", None), ("epoch", None)]
+
+    make_fname_key = lambda unitkey: dict([(k, unitkey[k]) for k in fname_keys] + PAD)
+    make_unit_key = lambda unitkey: dict([(k, unitkey[k]) for k in models.RPM.UNIT_KEY_NAMES])
+
+    for unit in units:
+        if unit.type_id != models.RPM.TYPE:
+            continue
+        or_criteria.append(dict([(k, unit.unit_key[k]) for k in fname_keys]))
+
+    # search already associated units 'similar' to units about to associate
+    _LOGGER.info("or criteria: %s" % or_criteria)
+    user_crit = {"filters": {"unit": {"$or": or_criteria}},
+		         "fields": {"unit": models.RPM.UNIT_KEY_NAMES},
+                 "type_ids": ["rpm"]}
+    criteria = UnitAssociationCriteria.from_client_input(user_crit)
+
+    association_query_manager = manager_factory.repo_unit_association_query_manager()
+    existing_units = association_query_manager.get_units(repo.id, criteria=criteria)
+
+    # build stripped unit tuples and real unit tuples
+
+    make_tuple = models.RPM.NAMEDTUPLE
+    stripped_tuples = []
+    real_tuples = []
+    for unit in units:
+        if unit.type_id != models.RPM.TYPE:
+            continue
+        stripped_tuples.append(make_tuple(**make_fname_key(unit.unit_key)))
+        real_tuples.append(make_tuple(**make_unit_key(unit.unit_key)))
+
+    for existing_unit in existing_units:
+        stripped_unit = make_tuple(**make_fname_key(existing_unit["metadata"]))
+        real_unit = make_tuple(**make_unit_key(existing_unit["metadata"]))
+        _LOGGER.info(real_unit)
+
+        # if stripped unit already exists in associated units, real unit with
+        # whole unit key has to also exits in associated_units. Otherwise
+        # it means user is trying to associate unit with same filename but
+        # different checksum or checksum_type
+        msg = "There is already package %s in repo %s. But package %s with"\
+              " different checksum or checksumtype is about"\
+              " to be associated to the repo"
+        if stripped_unit in stripped_tuples and real_unit not in real_tuples:
+            pkg = "%s-%s-%s.%s" % (real_unit.name, real_unit.version,
+                                      real_unit.release,
+                                      real_unit.arch)
+            raise PackageDuplicateError(msg % (pkg, repo, pkg))
