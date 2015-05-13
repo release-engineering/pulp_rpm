@@ -887,4 +887,5 @@ class GenerateSqliteForRepoStep(PublishStep):
         stdout, stderr = pipe.communicate()
         if pipe.returncode != 0:
             result_string = '%s\n::\n%s' % (stdout, stderr)
+            logger.error(result_string)
             raise PulpCodedException(message=result_string)
