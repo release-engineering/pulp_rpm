@@ -2,6 +2,7 @@ from collections import namedtuple
 import copy
 from gettext import gettext as _
 import os
+import shutil
 import subprocess
 
 from pulp.common import dateutils
@@ -465,7 +466,7 @@ class PublishMetadataStep(UnitPublishStep):
 
         metadata_file_name = os.path.basename(unit.storage_path)
         link_path = os.path.join(publish_location_relative_path, metadata_file_name)
-        self._create_symlink(unit.storage_path, link_path)
+        shutil.copy2(unit.storage_path, link_path)
 
         # Add the proper relative reference to the metadata file to repomd
         self.parent.repomd_file_context.\
