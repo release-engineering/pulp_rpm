@@ -465,6 +465,8 @@ class PublishMetadataStep(UnitPublishStep):
 
         metadata_file_name = os.path.basename(unit.storage_path)
         link_path = os.path.join(publish_location_relative_path, metadata_file_name)
+        if os.path.exists(link_path):
+            os.unlink(link_path)
         self._create_symlink(unit.storage_path, link_path)
 
         # Add the proper relative reference to the metadata file to repomd
