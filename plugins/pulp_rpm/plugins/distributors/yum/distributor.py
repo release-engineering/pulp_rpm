@@ -98,22 +98,24 @@ class YumHTTPDistributor(Distributor):
         repo_dir = configuration.get_master_publish_dir(repo, TYPE_ID_DISTRIBUTOR_YUM)
         shutil.rmtree(repo_dir, ignore_errors=True)
 
-        # remove the symlinks that might have been created for this repo/distributor
-        http_publish_dir = configuration.get_http_publish_dir(config)
-        https_publish_dir = configuration.get_https_publish_dir(config)
+        # dgregor - just because we remove the distributor doesn't mean we want to remove the published content
 
-        for publish_dir in [http_publish_dir, https_publish_dir]:
-            symlink = os.path.join(publish_dir, configuration.get_repo_relative_path(repo, config))
-            symlink_without_trailing_slash = symlink.rstrip(os.sep)
-            try:
-                os.unlink(symlink_without_trailing_slash)
-            except OSError as error:
-                # If the symlink doesn't exist pass
-                if error.errno != errno.ENOENT:
-                    raise
-            else:
-                # Clean the directories that were hosted for this repo.
-                self.clean_simple_hosting_directories(symlink_without_trailing_slash, publish_dir)
+        # remove the symlinks that might have been created for this repo/distributor
+        #http_publish_dir = configuration.get_http_publish_dir(config)
+        #https_publish_dir = configuration.get_https_publish_dir(config)
+        #
+        #for publish_dir in [http_publish_dir, https_publish_dir]:
+        #    symlink = os.path.join(publish_dir, configuration.get_repo_relative_path(repo, config))
+        #    symlink_without_trailing_slash = symlink.rstrip(os.sep)
+        #    try:
+        #        os.unlink(symlink_without_trailing_slash)
+        #    except OSError as error:
+        #        # If the symlink doesn't exist pass
+        #        if error.errno != errno.ENOENT:
+        #            raise
+        #    else:
+        #        # Clean the directories that were hosted for this repo.
+        #        self.clean_simple_hosting_directories(symlink_without_trailing_slash, publish_dir)
 
         # remove certificates for certificate based auth
         configuration.remove_cert_based_auth(repo, config)
