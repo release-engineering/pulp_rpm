@@ -4,6 +4,6 @@
         "display_name": "ISO",
         "description": "ISO",
         "unit_key": ["name", "checksum", "size"],
-        "search_indexes": []
+        "search_indexes": ["_last_updated"]
     }
 ]}

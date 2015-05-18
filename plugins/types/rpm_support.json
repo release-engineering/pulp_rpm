@@ -6,7 +6,7 @@
         "unit_key" :
                 ["id",  "family", "variant", "version", "arch"],
         "search_indexes" :
-                ["id", "family", "variant", "version", "arch"]
+                ["id", "family", "variant", "version", "arch", "_last_updated"]
     },
 
     {
@@ -16,7 +16,7 @@
         "unit_key" :
                 ["epoch",  "version", "release", "filename", "checksumtype", "checksum"],
         "search_indexes" :
-                ["epoch",  "version", "release", "checksum", "filename"]
+                ["epoch",  "version", "release", "checksum", "filename", "_last_updated"]
     },
 
     {
@@ -27,7 +27,7 @@
                 ["id"],
         "search_indexes" : [
             "id",  "version", "release", "type",
-            "status", "updated", "issued", "severity", "references"
+            "status", "updated", "issued", "severity", "references", "_last_updated"
         ],
         "referenced_types" : ["rpm"]
     },
@@ -40,7 +40,7 @@
             ["id", "repo_id"],
         "search_indexes" :
             ["id", "repo_id", "name", "mandatory_package_names", "conditional_package_names",
-            "optional_package_names", "default_package_names"]
+            "optional_package_names", "default_package_names", "_last_updated"]
     },
 
     {
@@ -50,7 +50,7 @@
         "unit_key" :
             ["id", "repo_id"],
         "search_indexes" :
-            ["id", "repo_id", "name", "packagegroupids"]
+            ["id", "repo_id", "name", "packagegroupids", "_last_updated"]
     },
 
     {
@@ -60,7 +60,7 @@
         "unit_key" :
             ["id", "repo_id"],
         "search_indexes" :
-            ["id", "repo_id", "name", "group_ids"]
+            ["id", "repo_id", "name", "group_ids", "_last_updated"]
     },
 
     {
@@ -71,7 +71,8 @@
                 ["name", "epoch", "version", "release", "arch", "checksumtype", "checksum"],
         "search_indexes" :
                 ["name", "epoch", "version", "release", "arch", "filename", "checksum",
-                 "checksumtype", "version_sort_index", ["version_sort_index", "release_sort_index"]],
+                 "checksumtype", "version_sort_index", ["version_sort_index", "release_sort_index"],
+                 "_last_updated"],
         "referenced_types" : ["erratum"]
     },
 
@@ -93,6 +94,6 @@
         "unit_key" :
             ["repo_id", "data_type"],
         "search_indexes" :
-            ["data_type"]
+            ["data_type", "_last_updated"]
     }
 ]}
