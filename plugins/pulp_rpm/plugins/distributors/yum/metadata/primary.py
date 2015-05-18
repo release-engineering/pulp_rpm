@@ -1,6 +1,7 @@
 import os
 
 from pulp.plugins.util.metadata_writer import FastForwardXmlFileContext
+from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import REPO_DATA_DIR_NAME
 from pulp_rpm.yum_plugin import util
@@ -51,7 +52,20 @@ class PrimaryXMLFileContext(FastForwardXmlFileContext):
         :param unit: unit whose metadata is to be written
         :type  unit: pulp.plugins.model.Unit
         """
-        metadata = unit.metadata['repodata']['primary']
+
+         if self.checksum_type == "sha256":
+             label = "repodata"
+         else:
+             label = "repodata-%s" % self.checksum_type
+         if label not in unit.metadata and "repodata" in unit.metadata:
+             unit.metadata[label] = rpm_parse.get_package_xml(unit.storage_path,
+                                                              sumtype=self.checksum_type,
+                                                              changelog_limit=unit.metadata.get("changelog_limit", 10))
+            metadata = {'label': unit.metadata[label]}
+            content_manager = manager_factory.content_manager()
+            content_manager.update_content_unit(unit_type_id, unit_id, metadata)
+
+        metadata = unit.metadata[label]['primary']
         if isinstance(metadata, unicode):
             metadata = metadata.encode('utf-8')
         self.metadata_file_handle.write(metadata)

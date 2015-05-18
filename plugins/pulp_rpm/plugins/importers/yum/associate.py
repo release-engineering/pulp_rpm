@@ -10,6 +10,8 @@ from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import depsolve
 from pulp_rpm.plugins.importers.yum import existing
 
+from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,6 +45,9 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     recursive = config.get(constants.CONFIG_RECURSIVE)
     if recursive is None:
         recursive = False
+
+    for unit in units:
+        custom_checksum_type_check(dest_repo, unit, config, import_conduit)
 
     associated_units = set([_associate_unit(dest_repo, import_conduit, unit) for unit in units])
     # allow garbage collection
@@ -358,3 +363,19 @@ def _safe_copy_unit_without_file(unit):
         if key.startswith('_'):
             del new_unit.metadata[key]
     return new_unit
+
+def custom_checksum_type_check(repo, unit, config, import_conduit):
+    _LOGGER.error("repo metadata %s" % repo.notes)
+
+    if "checksum_type" in repo.notes:
+        label = "repodata-%s" % repo.notes.get("checksum_type")
+        if not label in unit.metadata:
+            _LOGGER.error("Adding repodata\n")
+            new_metadata = {}
+            new_metadata[label] = rpm_parse.get_package_xml(str(unit.storage_path),
+                                                            sumtype=str(repo.notes["checksum_type"]),
+                                                            changelog_limit=config.get('changelog_limit', 10))
+            content_manager = manager_factory.content_manager()
+            content_manager.update_content_unit(unit.metadata["_content_type_id"],
+                                                unit.metadata["_id"],
+                                                new_metadata)
