@@ -12,8 +12,8 @@ UPDATE_INFO_XML_FILE_NAME = 'updateinfo.xml.gz'
 
 
 class UpdateinfoXMLFileContext(MetadataFileContext):
-    def __init__(self, working_dir, checksum_type=None):
-
+    def __init__(self, working_dir, checksum_type=None, prune_to_packages=[]):
+        self.prune_to_packages = prune_to_packages
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME,
                                           UPDATE_INFO_XML_FILE_NAME)
         super(UpdateinfoXMLFileContext, self).__init__(metadata_file_path, checksum_type)
@@ -108,8 +108,9 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
             name_element = ElementTree.SubElement(collection_element, 'name')
             name_element.text = pkglist['name']
 
+            prune_filenames = [pkg.metadata["filename"] for pkg in self.prune_to_packages]
             for package in pkglist['packages']:
-
+                if package["filename"] not in prune_to_filenames:
                 package_attributes = {'name': package['name'],
                                       'version': package['version'],
                                       'release': package['release'],

@@ -562,7 +562,14 @@ class PublishErrataStep(UnitPublishStep):
         one that is built into the UpdateinfoXMLFileContext
         """
         checksum_type = self.parent.get_checksum_type()
-        self.context = UpdateinfoXMLFileContext(self.get_working_dir(), checksum_type)
+        criteria = UnitAssociationCriteria(type_ids=["rpm"],
+                                           unit_fields=["filename"] + PACKAGE_FIELDS)
+        packages = self.get_conduit().get_units(criteria, as_generator=False)
+
+        checksum_type = self.parent.get_checksum_type()
+        self.context = UpdateinfoXMLFileContext(self.get_working_dir(),
+                                                checksum_type,
+                                                prune_to_packages=packages)
         self.context.initialize()
         # set the self.process_unit method to the corresponding method on the
         # UpdateInfoXMLFileContext as there is no other processing to be done for each unit.
